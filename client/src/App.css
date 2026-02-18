@@ -1,0 +1,437 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.detector-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+  color: #f8fafc;
+}
+
+.header {
+  margin-bottom: 30px;
+  text-align: left;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #3b82f6;
+}
+
+.subtitle {
+  color: #94a3b8;
+  font-size: 1.1rem;
+}
+
+.main-card {
+  background: #1e293b;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  border: 1px solid #334155;
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-element,
+.canvas-element {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.canvas-element {
+  z-index: 10;
+  pointer-events: none;
+}
+
+.camera-off {
+  color: #64748b;
+  text-align: center;
+}
+
+.camera-off-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.icon-xlarge {
+  width: 80px;
+  height: 80px;
+}
+
+.fps-counter {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  z-index: 20;
+}
+
+.controls-section {
+  padding: 25px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.stat-card {
+  background: #0f172a;
+  padding: 15px;
+  border-radius: 12px;
+  border: 1px solid #1e293b;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-bottom: 5px;
+}
+
+.stat-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.stat-sublabel {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #1e293b;
+  border-radius: 4px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.progress-warning {
+  background: #eab308;
+}
+
+.progress-danger {
+  background: #ef4444;
+}
+
+.button-group {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: white;
+  flex: 1;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+}
+
+.btn-stop {
+  background: #ef4444;
+}
+
+.btn-stop:hover {
+  background: #dc2626;
+}
+
+.btn-awake {
+  background: #10b981;
+  color: white;
+  flex: 1;
+}
+
+.btn-secondary {
+  background: #334155;
+  color: white;
+  padding: 12px;
+}
+
+.btn-secondary:hover {
+  background: #475569;
+}
+
+.settings-panel {
+  margin-top: 25px;
+  padding-top: 25px;
+  border-top: 1px solid #334155;
+  text-align: left;
+}
+
+.settings-title {
+  font-size: 1.25rem;
+  margin-bottom: 20px;
+}
+
+.setting-item {
+  margin-bottom: 20px;
+}
+
+.setting-label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+  color: #cbd5e1;
+}
+
+.camera-source-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.camera-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.camera-btn.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.ip-input {
+  width: 100%;
+  padding: 12px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: white;
+  margin-bottom: 8px;
+}
+
+.slider {
+  width: 100%;
+  height: 6px;
+  background: #1e293b;
+  border-radius: 3px;
+  appearance: none;
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: #3b82f6;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 6px;
+}
+
+.info-box {
+  background: #0f172a;
+  padding: 20px;
+  border-radius: 12px;
+  display: flex;
+  gap: 15px;
+  border: 1px solid #1e293b;
+}
+
+.info-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.info-list {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  padding-left: 20px;
+}
+
+.error-message {
+  background: #450a0a;
+  color: #fecaca;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.footer {
+  margin-top: 30px;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.icon-small {
+  width: 18px;
+  height: 18px;
+}
+
+.icon-large {
+  width: 32px;
+  height: 32px;
+}
+
+.user-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.btn-logout {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-logout:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-save {
+  background: #10b981;
+  color: white;
+  width: 100%;
+}
+
+.btn-save:hover {
+  background: #059669;
+}
+
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Alert Status Banner */
+.status-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.status-banner.sending {
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+}
+
+.status-banner.sent {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.status-banner.error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.banner-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.banner-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.banner-time {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.banner-close {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0 5px;
+  line-height: 1;
+}
+
+.banner-close:hover {
+  opacity: 0.7;
+}
