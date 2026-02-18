@@ -329,8 +329,7 @@ const DrowsinessDetector = ({ user, onLogout }) => {
     const saveProfile = async () => {
         try {
             setIsSaving(true);
-            const backend = `${window.location.protocol}//${window.location.hostname}:5000`;
-            const res = await fetch(`${backend}/api/profile`, {
+            const res = await fetch(`/api/profile`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -399,8 +398,7 @@ const DrowsinessDetector = ({ user, onLogout }) => {
             payload.message += ` Location: ${locStr}.`;
 
             // call backend endpoint
-            const backend = `${window.location.protocol}//${window.location.hostname}:5000`;
-            const res = await fetch(`${backend}/api/alert`, {
+            const res = await fetch(`/api/alert`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)

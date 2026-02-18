@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Plus, Briefcase, Clock, CheckCircle2, Trash2, Edit3, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const API_URL = 'http://localhost:5000/api/projects';
+const API_URL = '/api/projects';
 
 function Projects() {
     const [projects, setProjects] = useState([]);

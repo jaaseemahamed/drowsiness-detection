@@ -2,127 +2,127 @@ import React, { useState } from 'react';
 import { Mail, Lock, User, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
 
 const Login = ({ onLogin }) => {
-    const [isRegistering, setIsRegistering] = useState(false);
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [name, setName] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
-        setIsLoading(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
 
-        const endpoint = isRegistering ? '/api/register' : '/api/login';
-        const body = isRegistering
-            ? { email, password, name }
-            : { email, password };
+    const endpoint = isRegistering ? '/api/register' : '/api/login';
+    const body = isRegistering
+      ? { email, password, name }
+      : { email, password };
 
-        try {
-            const response = await fetch(`${window.location.protocol}//${window.location.hostname}:5000${endpoint}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-            });
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
 
-            const data = await response.json();
+      const data = await response.json();
 
-            if (response.ok) {
-                if (isRegistering) {
-                    setIsRegistering(false);
-                    setIsLoading(false);
-                    setError('Account created! Please login.');
-                } else {
-                    onLogin(data);
-                }
-            } else {
-                setError(data.error || 'Something went wrong');
-            }
-        } catch (err) {
-            setError('Failed to connect to server');
-        } finally {
-            setIsLoading(false);
+      if (response.ok) {
+        if (isRegistering) {
+          setIsRegistering(false);
+          setIsLoading(false);
+          setError('Account created! Please login.');
+        } else {
+          onLogin(data);
         }
-    };
+      } else {
+        setError(data.error || 'Something went wrong');
+      }
+    } catch (err) {
+      setError('Failed to connect to server');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    return (
-        <div className="login-container">
-            <div className="login-card">
-                <div className="login-header">
-                    <div className="login-icon">
-                        <ShieldCheck size={32} />
-                    </div>
-                    <h1 className="login-title">Safety Guard</h1>
-                    <p className="login-subtitle">
-                        {isRegistering ? 'Create your safety account' : 'Sign in to access safety features'}
-                    </p>
-                </div>
+  return (
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-header">
+          <div className="login-icon">
+            <ShieldCheck size={32} />
+          </div>
+          <h1 className="login-title">Safety Guard</h1>
+          <p className="login-subtitle">
+            {isRegistering ? 'Create your safety account' : 'Sign in to access safety features'}
+          </p>
+        </div>
 
-                <form onSubmit={handleSubmit} className="login-form">
-                    {isRegistering && (
-                        <div className="form-group-login">
-                            <label><User size={16} /> Name</label>
-                            <input
-                                type="text"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                placeholder="Full Name"
-                                required
-                            />
-                        </div>
-                    )}
-
-                    <div className="form-group-login">
-                        <label><Mail size={16} /> Email</label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="name@example.com"
-                            required
-                        />
-                    </div>
-
-                    <div className="form-group-login">
-                        <label><Lock size={16} /> Password</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••"
-                            required
-                        />
-                    </div>
-
-                    {error && <div className="login-error">{error}</div>}
-
-                    <button type="submit" disabled={isLoading} className="login-button">
-                        {isLoading ? (
-                            <Loader2 className="animate-spin" size={20} />
-                        ) : (
-                            <>
-                                {isRegistering ? 'Create Account' : 'Sign In'}
-                                <ArrowRight size={20} />
-                            </>
-                        )}
-                    </button>
-                </form>
-
-                <div className="login-footer">
-                    <button
-                        type="button"
-                        onClick={() => setIsRegistering(!isRegistering)}
-                        className="toggle-auth"
-                    >
-                        {isRegistering
-                            ? 'Already have an account? Sign In'
-                            : "Don't have an account? Create one"}
-                    </button>
-                </div>
+        <form onSubmit={handleSubmit} className="login-form">
+          {isRegistering && (
+            <div className="form-group-login">
+              <label><User size={16} /> Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Full Name"
+                required
+              />
             </div>
+          )}
 
-            <style jsx>{`
+          <div className="form-group-login">
+            <label><Mail size={16} /> Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@example.com"
+              required
+            />
+          </div>
+
+          <div className="form-group-login">
+            <label><Lock size={16} /> Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+          </div>
+
+          {error && <div className="login-error">{error}</div>}
+
+          <button type="submit" disabled={isLoading} className="login-button">
+            {isLoading ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : (
+              <>
+                {isRegistering ? 'Create Account' : 'Sign In'}
+                <ArrowRight size={20} />
+              </>
+            )}
+          </button>
+        </form>
+
+        <div className="login-footer">
+          <button
+            type="button"
+            onClick={() => setIsRegistering(!isRegistering)}
+            className="toggle-auth"
+          >
+            {isRegistering
+              ? 'Already have an account? Sign In'
+              : "Don't have an account? Create one"}
+          </button>
+        </div>
+      </div>
+
+      <style jsx>{`
         .login-container {
           display: flex;
           align-items: center;
@@ -247,8 +247,8 @@ const Login = ({ onLogin }) => {
           to { transform: rotate(360deg); }
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 };
 
 export default Login;
