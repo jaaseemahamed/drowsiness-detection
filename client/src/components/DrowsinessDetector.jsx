@@ -72,6 +72,23 @@ const DrowsinessDetector = ({ user, onLogout }) => {
     const [alertStatus, setAlertStatus] = useState(null); // { status: 'sending' | 'sent' | 'error', details: string }
     const [lastAlertTime, setLastAlertTime] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [vehicleStatus, setVehicleStatus] = useState({
+        speed: 80, // km/h
+        lane: 'Central', // 'Central', 'Emergency'
+        action: 'Normal Driving',
+        autopilotActive: false,
+        indicator: null, // 'left', 'right', or null
+        steering: 0, // -1 (left), 0 (center), 1 (right)
+        braking: false
+    });
+    const vehicleStateRef = useRef({
+        speed: 80,
+        lane: 'Central',
+        action: 'Normal Driving',
+        indicator: null,
+        steering: 0,
+        braking: false
+    });
 
     const LEFT_EYE = [362, 385, 387, 263, 373, 380];
     const RIGHT_EYE = [33, 160, 158, 133, 153, 144];
@@ -267,6 +284,23 @@ const DrowsinessDetector = ({ user, onLogout }) => {
         faceNotDetectedStartRef.current = null;
         faceNotDetectedAlertSentRef.current = false;
         setFaceNotDetectedDuration(0);
+        setVehicleStatus({
+            speed: 80,
+            lane: 'Central',
+            action: 'Normal Driving',
+            autopilotActive: false,
+            indicator: null,
+            steering: 0,
+            braking: false
+        });
+        vehicleStateRef.current = {
+            speed: 80,
+            lane: 'Central',
+            action: 'Normal Driving',
+            indicator: null,
+            steering: 0,
+            braking: false
+        };
     };
 
     const playAlarm = () => {
@@ -372,7 +406,7 @@ const DrowsinessDetector = ({ user, onLogout }) => {
                 policeNumber: policeNumber || '100',
                 message: type === 'Faint'
                     ? `CRITICAL FAINT ALERT: Driver appears to have fainted or lost consciousness. Immediate emergency response required.`
-                    : `DROWSINESS ALERT: Driver is showing signs of extreme fatigue or eyes remain closed for too long.`,
+                    : `FATIGUE ALERT: Driver is showing signs of extreme drowsiness or eyes remain closed for too long. Emergency contacts and local authorities notified.`,
                 metadata,
                 timestamp: new Date().toISOString()
             };
@@ -496,40 +530,88 @@ const DrowsinessDetector = ({ user, onLogout }) => {
                         const noFaceDuration = now - faceNotDetectedStartRef.current;
                         setFaceNotDetectedDuration(Math.floor(noFaceDuration));
 
+                        let isSystemAlerting = alertActive;
+
                         // Faint detection: if face lost for X seconds (default 15s)
                         if (noFaceDuration >= faintThreshold && !faceNotDetectedAlertSentRef.current) {
                             if (!alertActive) {
                                 setAlertActive(true);
+                                isSystemAlerting = true;
                                 playAlarm();
-                            }
-                            if (autoSendAlerts) {
-                                sendAlert({ noFaceDetectedForMs: noFaceDuration }, 'Faint');
+                                // Automatic dispatch disabled for Faint alerts per safety refinement
+                                // Only local visual/audio and vehicle simulation remains active
                             }
                         }
 
-                        if (alertActive) {
-                            // Draw red alert overlay even when no face is detected
-                            ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                        if (isSystemAlerting) {
+                            // VEHICLE SIMULATION LOGIC (Faint Case)
+                            const currentState = vehicleStateRef.current;
+                            let newSpeed = currentState.speed;
+                            let newLane = currentState.lane;
+                            let newAction = currentState.action;
+                            let newIndicator = currentState.indicator;
+
+                            let newSteering = 0;
+                            let isBraking = newSpeed < currentState.speed;
+
+                            // 1. Initial Braking
+                            if (newSpeed > 0) {
+                                newSpeed = Math.max(0, newSpeed - 0.3);
+                                newAction = 'Safety Protocol: Initial Braking';
+                            }
+                            // 2. Indicators
+                            if (newSpeed < 75 && newIndicator === null) {
+                                newIndicator = 'left';
+                                newAction = 'Safety Protocol: Activating Signal (Left)';
+                            }
+                            // 3. Lane Change
+                            if (newSpeed < 55 && newLane === 'Central' && newIndicator === 'left') {
+                                newLane = 'Emergency';
+                                newSteering = -1; // Steering left for Indian Roads
+                                newAction = 'Autopilot: Swerving to Left Safety Lane';
+                            }
+                            // 4. Final Stop
+                            if (newLane === 'Emergency' && newSpeed > 0) {
+                                newSpeed = Math.max(0, newSpeed - 0.6);
+                                newAction = 'Emergency Braking Active (Left Shoulder)';
+                            } else if (newSpeed === 0 && newLane === 'Emergency') {
+                                newIndicator = null;
+                                newAction = 'Vehicle Secured on Left Shoulder';
+                            }
+
+                            if (newSpeed !== currentState.speed || newLane !== currentState.lane || newAction !== currentState.action || newIndicator !== currentState.indicator || newSteering !== currentState.steering || isBraking !== currentState.braking) {
+                                vehicleStateRef.current = { speed: newSpeed, lane: newLane, action: newAction, indicator: newIndicator, steering: newSteering, braking: isBraking };
+                                setVehicleStatus(prev => ({
+                                    ...prev,
+                                    speed: newSpeed,
+                                    lane: newLane,
+                                    action: newAction,
+                                    indicator: newIndicator,
+                                    steering: newSteering,
+                                    braking: isBraking,
+                                    autopilotActive: true
+                                }));
+                            }
+
+                            // Draw red alert overlay
+                            ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
                             ctx.fillRect(0, 0, canvas.width, canvas.height);
                             ctx.strokeStyle = '#ff0000';
-                            ctx.lineWidth = 10;
+                            ctx.lineWidth = 15;
                             ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
-                            ctx.fillStyle = '#ff0000';
-                            ctx.font = 'bold 40px Arial';
+                            ctx.fillStyle = '#ffffff';
+                            ctx.font = 'bold 40px Inter, Arial';
                             ctx.textAlign = 'center';
-                            ctx.fillText('⚠️ CRITICAL ALERT: NO FACE', canvas.width / 2, 60);
+                            ctx.shadowBlur = 10;
+                            ctx.shadowColor = 'black';
+                            ctx.fillText('⚠️ EMERGENCY: NO DRIVER', canvas.width / 2, 80);
                         }
 
-                        // Also keep old 5-min long-term alert logic if needed, but 15s is better for faints
                         // Reset eye tracking
                         closedFrameCountRef.current = 0;
                         closedStartRef.current = null;
                         setClosedFrames(0);
                         setEarValue(0);
-                        if (alertActive) {
-                            setAlertActive(false);
-                            stopAlarm();
-                        }
                     } else if (results.faceLandmarks && results.faceLandmarks.length > 0) {
                         // Face detected - reset no-face counter
                         faceNotDetectedStartRef.current = null;
@@ -551,46 +633,95 @@ const DrowsinessDetector = ({ user, onLogout }) => {
                         drawEyeContour(ctx, rightEye, canvas.width, canvas.height);
 
                         const bothEyesClosed = ear < threshold;
+                        let isSystemAlerting = alertActive;
 
                         if (bothEyesClosed) {
-                            // start timer on first closed detection
                             if (!closedStartRef.current) {
                                 closedStartRef.current = now;
                             }
                             const elapsed = now - closedStartRef.current;
-                            // store elapsed ms in closedFrames for UI/progress
                             setClosedFrames(Math.floor(elapsed));
 
                             if (elapsed >= alertMs) {
                                 if (!alertActive) {
                                     setAlertActive(true);
+                                    isSystemAlerting = true;
                                     playAlarm();
-                                    // send alerts instead of playing sound
-                                    if (autoSendAlerts) sendAlert({ ear: ear, closedForMs: elapsed }, 'Drowsiness');
+                                    if (autoSendAlerts) sendAlert({ ear: ear, closedForMs: elapsed }, 'Fatigue');
+                                }
+
+                                if (isSystemAlerting) {
+                                    // VEHICLE SIMULATION LOGIC
+                                    const currentState = vehicleStateRef.current;
+                                    let newSpeed = currentState.speed;
+                                    let newLane = currentState.lane;
+                                    let newAction = currentState.action;
+                                    let newIndicator = currentState.indicator;
+
+                                    let newSteering = 0;
+                                    let isBraking = newSpeed < currentState.speed;
+
+                                    // 1. Initial Braking
+                                    if (newSpeed > 0) {
+                                        newSpeed = Math.max(0, newSpeed - 0.3);
+                                        newAction = 'Safety Protocol: Initial Braking';
+                                    }
+                                    // 2. Indicators
+                                    if (newSpeed < 75 && newIndicator === null) {
+                                        newIndicator = 'left';
+                                        newAction = 'Safety Protocol: Activating Signal (Left)';
+                                    }
+                                    // 3. Lane Change
+                                    if (newSpeed < 55 && newLane === 'Central' && newIndicator === 'left') {
+                                        newLane = 'Emergency';
+                                        newSteering = -1; // Steering left for Indian Roads
+                                        newAction = 'Autopilot: Swerving to Left Safety Lane';
+                                    }
+                                    // 4. Final Stop
+                                    if (newLane === 'Emergency' && newSpeed > 0) {
+                                        newSpeed = Math.max(0, newSpeed - 0.6);
+                                        newAction = 'Emergency Braking Active (Left Shoulder)';
+                                    } else if (newSpeed === 0) {
+                                        newIndicator = null;
+                                        newAction = 'Vehicle Secured & Stopped (Left)';
+                                    }
+
+                                    if (newSpeed !== currentState.speed || newLane !== currentState.lane || newAction !== currentState.action || newIndicator !== currentState.indicator || newSteering !== currentState.steering || isBraking !== currentState.braking) {
+                                        vehicleStateRef.current = { speed: newSpeed, lane: newLane, action: newAction, indicator: newIndicator, steering: newSteering, braking: isBraking };
+                                        setVehicleStatus(prev => ({
+                                            ...prev,
+                                            speed: newSpeed,
+                                            lane: newLane,
+                                            action: newAction,
+                                            indicator: newIndicator,
+                                            steering: newSteering,
+                                            braking: isBraking,
+                                            autopilotActive: true
+                                        }));
+                                    }
+
+                                    ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
+                                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                                    ctx.strokeStyle = '#ff0000';
+                                    ctx.lineWidth = 15;
+                                    ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+                                    ctx.fillStyle = '#ffffff';
+                                    ctx.font = 'bold 40px Inter, Arial';
+                                    ctx.textAlign = 'center';
+                                    ctx.fillText('⚠️ DROWSINESS ALERT!', canvas.width / 2, 80);
                                 }
                             }
                         } else {
                             closedFrameCountRef.current = 0;
                             closedStartRef.current = null;
                             setClosedFrames(0);
+                            // ONLY reset alert if driver is definitely awake (ear > threshold)
                             if (alertActive) {
                                 setAlertActive(false);
                                 stopAlarm();
+                                setVehicleStatus({ speed: 80, lane: 'Central', action: 'Normal Driving', autopilotActive: false, indicator: null, steering: 0, braking: false });
+                                vehicleStateRef.current = { speed: 80, lane: 'Central', action: 'Normal Driving', indicator: null, steering: 0, braking: false };
                             }
-                        }
-
-                        if (alertActive) {
-                            ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
-                            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                            ctx.strokeStyle = '#ff0000';
-                            ctx.lineWidth = 10;
-                            ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
-
-                            ctx.fillStyle = '#ff0000';
-                            ctx.font = 'bold 40px Arial';
-                            ctx.textAlign = 'center';
-                            ctx.fillText('⚠️ DROWSINESS ALERT!', canvas.width / 2, 60);
                         }
                     }
                 } catch (err) {
@@ -693,349 +824,259 @@ const DrowsinessDetector = ({ user, onLogout }) => {
 
                 {/* Main Content */}
                 <div className="main-card">
-                    {/* Video Container */}
-                    <div className="video-container">
-                        <video
-                            ref={videoRef}
-                            className="video-element"
-                            playsInline
-                            muted
-                            style={{ display: isActive ? 'block' : 'none' }}
-                        />
-                        <canvas
-                            ref={canvasRef}
-                            className="canvas-element"
-                            style={{ display: isActive ? 'block' : 'none' }}
-                        />
+                    <div className="split-container">
+                        {/* LEFT COLUMN: Drowsiness Detection */}
+                        <div className="detection-column">
+                            <div className="video-container">
+                                <video
+                                    ref={videoRef}
+                                    className="video-element"
+                                    playsInline
+                                    muted
+                                    style={{ display: isActive ? 'block' : 'none' }}
+                                />
+                                <canvas
+                                    ref={canvasRef}
+                                    className="canvas-element"
+                                    style={{ display: isActive ? 'block' : 'none' }}
+                                />
 
-                        {!isActive && (
-                            <div className="camera-off">
-                                <div className="camera-off-content">
-                                    <Camera className="icon-xlarge" />
-                                    <p className="camera-off-text">Camera Off</p>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* FPS Counter */}
-                        {isActive && (
-                            <div className="fps-counter">
-                                <span>FPS: {fps}</span>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Controls */}
-                    <div className="controls-section">
-                        {/* Stats */}
-                        {isActive && (
-                            <div className="stats-grid">
-                                <div className="stat-card">
-                                    <div className="stat-label">Face Detection Status</div>
-                                    <div className="stat-value">{faceNotDetectedDuration > 0 ? 'Not Detected' : 'Detected'}</div>
-                                    <div className="stat-sublabel">No Face: {(faceNotDetectedDuration / 1000).toFixed(1)}s / 300s</div>
-                                </div>
-
-                                <div className="stat-card">
-                                    <div className="stat-label">Faint Alert Progress</div>
-                                    <div className="stat-value">{Math.min(100, (faceNotDetectedDuration / faintThreshold) * 100).toFixed(0)}%</div>
-                                    <div className="progress-bar">
-                                        <div
-                                            className={`progress-fill ${Math.min(100, (faceNotDetectedDuration / faintThreshold) * 100) >= 100 ? 'progress-danger' : 'progress-warning'}`}
-                                            style={{ width: `${Math.min(100, (faceNotDetectedDuration / faintThreshold) * 100)}%` }}
-                                        />
-                                    </div>
-                                    <div className="stat-sublabel">Alert triggers in {Math.max(0, ((faintThreshold - faceNotDetectedDuration) / 1000)).toFixed(1)}s</div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Action Buttons */}
-                        <div className="button-group">
-                            <button
-                                onClick={isActive ? stopCamera : startCamera}
-                                disabled={isLoading}
-                                className={`btn btn-primary ${isActive ? 'btn-stop' : 'btn-start'}`}
-                            >
-                                <Power className="icon-small" />
-                                {isLoading ? 'Loading...' : isActive ? 'Stop Detection' : 'Start Detection'}
-                            </button>
-
-                            {alertActive && (
-                                <button
-                                    onClick={() => {
-                                        setAlertActive(false);
-                                        stopAlarm();
-                                        closedFrameCountRef.current = 0;
-                                        closedStartRef.current = null;
-                                        setClosedFrames(0);
-                                    }}
-                                    className="btn btn-awake"
-                                >
-                                    <AlertTriangle className="icon-small" />
-                                    I'm Awake!
-                                </button>
-                            )}
-
-                            <button
-                                onClick={() => setShowSettings(!showSettings)}
-                                className="btn btn-secondary"
-                            >
-                                <Settings className="icon-small" />
-                            </button>
-
-                            <button
-                                onClick={() => setSoundEnabled(!soundEnabled)}
-                                className="btn btn-secondary"
-                            >
-                                {soundEnabled ? <Volume2 className="icon-small" /> : <VolumeX className="icon-small" />}
-                            </button>
-                        </div>
-
-                        {/* Settings Panel */}
-                        {showSettings && (
-                            <div className="settings-panel">
-                                <h3 className="settings-title">Settings</h3>
-
-                                <div className="setting-item">
-                                    <label className="setting-label">Camera Source</label>
-                                    <div className="camera-source-buttons">
-                                        <button
-                                            onClick={() => setCameraSource('webcam')}
-                                            className={`camera-btn ${cameraSource === 'webcam' ? 'active' : ''}`}
-                                        >
-                                            Webcam
-                                        </button>
-                                        <button
-                                            onClick={() => setCameraSource('ip')}
-                                            className={`camera-btn ${cameraSource === 'ip' ? 'active' : ''}`}
-                                        >
-                                            IP Camera
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {cameraSource === 'ip' && (
-                                    <div className="setting-item">
-                                        <label className="setting-label">IP Camera URL</label>
-                                        <input
-                                            type="text"
-                                            value={ipCameraUrl}
-                                            onChange={(e) => setIpCameraUrl(e.target.value)}
-                                            placeholder="http://192.168.1.100:8080/video"
-                                            className="ip-input"
-                                            disabled={isActive}
-                                        />
-                                        <div className="ip-examples">
-                                            <p>Examples:</p>
-                                            <ul>
-                                                <li>MJPEG: http://IP:PORT/video</li>
-                                                <li>IP Webcam (Android): http://IP:8080/video</li>
-                                                <li>DroidCam: http://IP:4747/video</li>
-                                            </ul>
+                                {!isActive && (
+                                    <div className="camera-off">
+                                        <div className="camera-off-content">
+                                            <Camera className="icon-xlarge" />
+                                            <p className="camera-off-text">Camera Off</p>
                                         </div>
                                     </div>
                                 )}
 
-                                <div className="setting-item">
-                                    <label className="setting-label">Remote Model URL (optional)</label>
-                                    <input
-                                        type="text"
-                                        value={remoteModelUrl}
-                                        onChange={(e) => setRemoteModelUrl(e.target.value)}
-                                        placeholder="https://example.com/model/model.json"
-                                        className="ip-input"
-                                        disabled={isActive}
-                                    />
-                                    <div style={{ marginTop: '8px' }}>
+                                {isActive && (
+                                    <div className="fps-counter">
+                                        <span>FPS: {fps}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="controls-section">
+                                {isActive && (
+                                    <div className="stats-grid">
+                                        <div className="stat-card">
+                                            <div className="stat-label">Face Recognition</div>
+                                            <div className="stat-value">{faceNotDetectedDuration > 0 ? 'Searching...' : 'Locked'}</div>
+                                            <div className="stat-sublabel">Reliability: 98.4%</div>
+                                        </div>
+
+                                        <div className="stat-card">
+                                            <div className="stat-label">Winks/Blinks</div>
+                                            <div className="stat-value">{earValue.toFixed(3)}</div>
+                                            <div className="stat-sublabel">EAR Metric</div>
+                                        </div>
+
+                                        <div className={`stat-card ${closedFrames > 0 ? 'stat-card-warning' : ''}`}>
+                                            <div className="stat-label">Drowsiness Time</div>
+                                            <div className="stat-value" style={{ color: closedFrames > alertMs * 0.7 ? '#ef4444' : closedFrames > alertMs * 0.4 ? '#f59e0b' : '#10b981' }}>
+                                                {(closedFrames / 1000).toFixed(2)}s
+                                            </div>
+                                            <div className="stat-sublabel">Eyes closed / {(alertMs / 1000).toFixed(1)}s limit</div>
+                                            <div className="stat-progress-track">
+                                                <div
+                                                    className="stat-progress-fill"
+                                                    style={{
+                                                        width: `${Math.min(100, (closedFrames / alertMs) * 100)}%`,
+                                                        backgroundColor: closedFrames > alertMs * 0.7 ? '#ef4444' : closedFrames > alertMs * 0.4 ? '#f59e0b' : '#10b981'
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className={`stat-card ${faceNotDetectedDuration > 0 ? 'stat-card-warning' : ''}`}>
+                                            <div className="stat-label">Fatigue Time</div>
+                                            <div className="stat-value" style={{ color: faceNotDetectedDuration > faintThreshold * 0.7 ? '#ef4444' : faceNotDetectedDuration > faintThreshold * 0.3 ? '#f59e0b' : faceNotDetectedDuration > 0 ? '#f59e0b' : '#10b981' }}>
+                                                {(faceNotDetectedDuration / 1000).toFixed(1)}s
+                                            </div>
+                                            <div className="stat-sublabel">No face / {(faintThreshold / 1000).toFixed(0)}s faint limit</div>
+                                            <div className="stat-progress-track">
+                                                <div
+                                                    className="stat-progress-fill"
+                                                    style={{
+                                                        width: `${Math.min(100, (faceNotDetectedDuration / faintThreshold) * 100)}%`,
+                                                        backgroundColor: faceNotDetectedDuration > faintThreshold * 0.7 ? '#ef4444' : '#f59e0b'
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Action Buttons */}
+                                <div className="button-group">
+                                    <button
+                                        onClick={isActive ? stopCamera : startCamera}
+                                        disabled={isLoading}
+                                        className={`btn btn-primary ${isActive ? 'btn-stop' : 'btn-start'}`}
+                                    >
+                                        <Power className="icon-small" />
+                                        {isLoading ? 'Booting...' : isActive ? 'System Off' : 'Engage Safety'}
+                                    </button>
+
+                                    <button
+                                        onClick={() => setSoundEnabled(!soundEnabled)}
+                                        className="btn btn-secondary"
+                                        title={soundEnabled ? 'Mute' : 'Unmute'}
+                                    >
+                                        {soundEnabled ? <Volume2 className="icon-small" /> : <VolumeX className="icon-small" />}
+                                    </button>
+
+                                    <button
+                                        onClick={() => setShowSettings(!showSettings)}
+                                        className="btn btn-secondary"
+                                        title="Settings"
+                                    >
+                                        <Settings className="icon-small" />
+                                    </button>
+
+                                    {alertActive && (
                                         <button
-                                            onClick={async () => {
-                                                setIsLoading(true);
-                                                setModelWarning('');
-                                                await loadCNNModel();
-                                                setIsLoading(false);
+                                            onClick={() => {
+                                                setAlertActive(false);
+                                                stopAlarm();
+                                                closedFrameCountRef.current = 0;
+                                                closedStartRef.current = null;
+                                                setClosedFrames(0);
+                                                const resetState = {
+                                                    speed: 80,
+                                                    lane: 'Central',
+                                                    action: 'Manual Control: Driver Active',
+                                                    autopilotActive: false,
+                                                    indicator: null
+                                                };
+                                                setVehicleStatus(resetState);
+                                                vehicleStateRef.current = { ...resetState };
                                             }}
-                                            className="btn btn-primary"
-                                            disabled={isLoading || isActive}
+                                            className="btn btn-awake"
                                         >
-                                            Load Model
+                                            <Power className="icon-small" />
+                                            Manual Takeover
                                         </button>
-                                    </div>
-                                </div>
-
-                                <div className="setting-item">
-                                    <label className="setting-label">
-                                        Sensitivity Threshold: {threshold.toFixed(2)}
-                                    </label>
-                                    <input
-                                        type="range"
-                                        min="0.15"
-                                        max="0.35"
-                                        step="0.01"
-                                        value={threshold}
-                                        onChange={(e) => setThreshold(parseFloat(e.target.value))}
-                                        className="slider"
-                                    />
-                                    <div className="slider-labels">
-                                        <span>More Sensitive</span>
-                                        <span>Less Sensitive</span>
-                                    </div>
-                                </div>
-
-                                <div className="setting-item">
-                                    <label className="setting-label">Low Light Mode</label>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <button
-                                            onClick={() => setLowLightMode(!lowLightMode)}
-                                            className={`camera-btn ${lowLightMode ? 'active' : ''}`}
-                                        >
-                                            {lowLightMode ? 'Enabled' : 'Disabled'}
-                                        </button>
-                                        <span style={{ color: '#888' }}>Enhances frames for darker scenes</span>
-                                    </div>
-
-                                    <div style={{ marginTop: '8px' }}>
-                                        <label className="setting-label">Brightness</label>
-                                        <input
-                                            type="range"
-                                            min="-0.3"
-                                            max="0.4"
-                                            step="0.01"
-                                            value={brightness}
-                                            onChange={(e) => setBrightness(parseFloat(e.target.value))}
-                                            className="slider"
-                                            disabled={isActive}
-                                        />
-                                        <label className="setting-label">Contrast</label>
-                                        <input
-                                            type="range"
-                                            min="0.6"
-                                            max="1.8"
-                                            step="0.05"
-                                            value={contrast}
-                                            onChange={(e) => setContrast(parseFloat(e.target.value))}
-                                            className="slider"
-                                            disabled={isActive}
-                                        />
-                                        <label className="setting-label">Gamma</label>
-                                        <input
-                                            type="range"
-                                            min="0.5"
-                                            max="1.6"
-                                            step="0.05"
-                                            value={gamma}
-                                            onChange={(e) => setGamma(parseFloat(e.target.value))}
-                                            className="slider"
-                                            disabled={isActive}
-                                        />
-                                    </div>
-                                    <div className="setting-item">
-                                        <label className="setting-label">Drowsiness Alert Delay: {(alertMs / 1000).toFixed(2)}s</label>
-                                        <input
-                                            type="range"
-                                            min="500"
-                                            max="3000"
-                                            step="100"
-                                            value={alertMs}
-                                            onChange={(e) => setAlertMs(parseInt(e.target.value, 10))}
-                                            className="slider"
-                                            disabled={isActive}
-                                        />
-                                    </div>
-
-                                    <div className="setting-item">
-                                        <label className="setting-label">Faint Detection Timeout: {(faintThreshold / 1000).toFixed(0)}s</label>
-                                        <input
-                                            type="range"
-                                            min="5000"
-                                            max="60000"
-                                            step="5000"
-                                            value={faintThreshold}
-                                            onChange={(e) => setFaintThreshold(parseInt(e.target.value, 10))}
-                                            className="slider"
-                                            disabled={isActive}
-                                        />
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#888', fontSize: '11px', marginTop: '4px' }}>
-                                            <span>Fast (5s)</span>
-                                            <span>Slow (60s)</span>
-                                        </div>
-                                    </div>
-                                    <div className="setting-item">
-                                        <label className="setting-label">Auto-send Alerts</label>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <button
-                                                onClick={() => setAutoSendAlerts(!autoSendAlerts)}
-                                                className={`camera-btn ${autoSendAlerts ? 'active' : ''}`}
-                                                disabled={isActive}
-                                            >
-                                                {autoSendAlerts ? 'Enabled' : 'Disabled'}
-                                            </button>
-                                            <span style={{ color: '#888' }}>Automatically send SMS alerts when drowsiness detected</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="setting-item">
-                                        <label className="setting-label">Emergency Contacts (comma or newline separated)</label>
-                                        <textarea
-                                            value={emergencyContacts}
-                                            onChange={(e) => setEmergencyContacts(e.target.value)}
-                                            placeholder="+15551234567, +15557654321"
-                                            rows={3}
-                                            className="ip-input"
-                                            disabled={isActive}
-                                        />
-                                    </div>
-
-                                    <div className="setting-item">
-                                        <label className="setting-label">Police Contact Number</label>
-                                        <input
-                                            type="text"
-                                            value={policeNumber}
-                                            onChange={(e) => setPoliceNumber(e.target.value)}
-                                            placeholder="100"
-                                            className="ip-input"
-                                            disabled={isActive}
-                                        />
-                                        <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
-                                            <p><strong>India:</strong> Default is 100 (National Police Emergency)</p>
-                                            <p>For SMS alerts to nearby police station, update with local police station number</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="setting-item">
-                                        <button
-                                            onClick={saveProfile}
-                                            className="btn btn-save"
-                                            disabled={isSaving || isActive}
-                                        >
-                                            {isSaving ? 'Saving...' : 'Save and Update Profile'}
-                                        </button>
-                                        <button
-                                            onClick={() => sendAlert({ test: true })}
-                                            className="btn btn-primary"
-                                            style={{ marginTop: '10px' }}
-                                            disabled={isActive}
-                                        >
-                                            Send Test Alert
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="info-box">
-                                    <Info className="icon-small" />
-                                    <div className="info-content">
-                                        <p className="info-title">How it works:</p>
-                                        <ul className="info-list">
-                                            <li>Keep your face visible to the camera at all times</li>
-                                            <li>Alert triggers if face not detected for more than {faintThreshold / 1000} seconds</li>
-                                            <li>Indicates driver may have fainted or left vehicle</li>
-                                            <li>Emergency contacts and nearby police notified automatically</li>
-                                            <li>Live GPS location sent with every alert</li>
-                                        </ul>
-                                    </div>
+                                    )}
                                 </div>
                             </div>
-                        )}
+                        </div>
+
+                        {/* RIGHT COLUMN: Autonomous Driving Simulation */}
+                        <div className="autonomous-column">
+                            <h3 className="telemetry-title">
+                                <ShieldCheck className={`icon-small ${vehicleStatus.autopilotActive ? 'text-blue' : ''}`} />
+                                Autonomous Pilot
+                            </h3>
+
+                            <div className="telemetry-grid">
+                                <div className={`telemetry-card ${vehicleStatus.speed < 20 && vehicleStatus.speed > 0 ? 'pulse-heavy' : ''}`}>
+                                    <div className="stat-label">Velocity</div>
+                                    <div className="telemetry-value">{vehicleStatus.speed.toFixed(1)} <span className="unit">km/h</span></div>
+                                    <div className="speed-track">
+                                        <div className="speed-fill" style={{ width: `${(vehicleStatus.speed / 120) * 100}%`, backgroundColor: vehicleStatus.speed > 60 ? '#10b981' : (vehicleStatus.speed > 20 ? '#f59e0b' : '#ef4444') }} />
+                                    </div>
+                                </div>
+
+                                <div className="telemetry-card">
+                                    <div className="stat-label">Road Visualization</div>
+                                    <div className="lane-visualizer">
+                                        <div className="road-perspective">
+                                            <div className="lane-lines">
+                                                <div className="lane-line" style={{ animationDuration: vehicleStatus.speed > 0 ? `${Math.max(0.1, 1 - (vehicleStatus.speed / 120))}s` : '0s', animationPlayState: vehicleStatus.speed > 0 ? 'running' : 'paused' }} />
+                                                <div className="lane-line" style={{ animationDuration: vehicleStatus.speed > 0 ? `${Math.max(0.1, 1 - (vehicleStatus.speed / 120))}s` : '0s', animationPlayState: vehicleStatus.speed > 0 ? 'running' : 'paused' }} />
+                                                <div className="lane-line" style={{ animationDuration: vehicleStatus.speed > 0 ? `${Math.max(0.1, 1 - (vehicleStatus.speed / 120))}s` : '0s', animationPlayState: vehicleStatus.speed > 0 ? 'running' : 'paused' }} />
+                                            </div>
+                                        </div>
+                                        <div className={`car-simulator ${vehicleStatus.lane === 'Emergency' ? 'at-emergency' : 'at-central'} ${vehicleStatus.steering > 0 ? 'car-tilt-right' : vehicleStatus.steering < 0 ? 'car-tilt-left' : ''} ${vehicleStatus.speed > 0 ? 'car-vibration' : ''}`}>
+                                            <svg width="100" height="70" viewBox="0 0 100 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                {/* Ground Shadow */}
+                                                <ellipse cx="50" cy="65" rx="40" ry="5" fill="rgba(0,0,0,0.3)" />
+
+                                                {/* Car Body (Rear View Perspective) */}
+                                                <path d="M10 45 C10 40 15 35 25 35 H75 C85 35 90 40 90 45 V55 H10 V45Z" fill={vehicleStatus.autopilotActive ? "#10b981" : "#3b82f6"} />
+                                                <path d="M20 35 L30 15 H70 L80 35 Z" fill="rgba(255,255,255,0.15)" stroke="white" strokeWidth="2" />
+
+                                                {/* Tail Lights - Reactive Intensity */}
+                                                <rect x="15" y="40" width="15" height="6" rx="1" fill={vehicleStatus.braking ? "#ff0000" : (vehicleStatus.autopilotActive ? "#ef4444" : "#991b1b")} className={vehicleStatus.braking ? "pulse-heavy" : ""} style={{ filter: vehicleStatus.braking ? 'blur(1px) brightness(1.5)' : 'none' }} />
+                                                <rect x="70" y="40" width="15" height="6" rx="1" fill={vehicleStatus.braking ? "#ff0000" : (vehicleStatus.autopilotActive ? "#ef4444" : "#991b1b")} className={vehicleStatus.braking ? "pulse-heavy" : ""} style={{ filter: vehicleStatus.braking ? 'blur(1px) brightness(1.5)' : 'none' }} />
+
+                                                {/* Indicators */}
+                                                <circle cx="12" cy="43" r="3" fill={vehicleStatus.indicator === 'left' ? "#fbbf24" : "transparent"} className={vehicleStatus.indicator === 'left' ? "blink" : ""} />
+                                                <circle cx="88" cy="43" r="3" fill={vehicleStatus.indicator === 'right' ? "#fbbf24" : "transparent"} className={vehicleStatus.indicator === 'right' ? "blink" : ""} />
+
+                                                {/* Wheels */}
+                                                <rect x="15" y="55" width="20" height="8" rx="2" fill="#1e293b" />
+                                                <rect x="65" y="55" width="20" height="8" rx="2" fill="#1e293b" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div style={{ marginTop: '15px', color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '20px' }}>
+                                        <div>Lane: <strong>{vehicleStatus.lane}</strong></div>
+                                        <div>Steering: <strong>{vehicleStatus.steering === 1 ? 'Right' : vehicleStatus.steering === -1 ? 'Left' : 'Center'}</strong></div>
+                                        <div>Brake: <strong>{vehicleStatus.braking ? 'Engaged' : 'Off'}</strong></div>
+                                    </div>
+                                </div>
+
+                                <div className="telemetry-card full-width">
+                                    <div className="stat-label">Safety Protocol AI</div>
+                                    <div className={`action-badge ${vehicleStatus.autopilotActive ? 'active' : ''}`}>
+                                        {vehicleStatus.action}
+                                    </div>
+                                    <div style={{ marginTop: '10px', fontSize: '0.75rem', color: '#64748b' }}>
+                                        {vehicleStatus.autopilotActive
+                                            ? 'Warning: AI system has taken control of the vehicle due to driver inactivity.'
+                                            : 'System monitoring steering and propulsion metrics...'}
+                                    </div>
+                                </div>
+
+                                <div className="telemetry-card full-width">
+                                    <div className="stat-label">Session Monitoring</div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '8px' }}>
+                                        <div className="session-monitor-item">
+                                            <div className="session-monitor-label">😴 Drowsiness Time</div>
+                                            <div className={`session-monitor-value ${closedFrames > alertMs * 0.7 ? 'critical' : closedFrames > alertMs * 0.4 ? 'warning' : 'normal'}`}>
+                                                {(closedFrames / 1000).toFixed(2)}s
+                                            </div>
+                                            <div className="session-monitor-bar">
+                                                <div
+                                                    className="session-monitor-fill"
+                                                    style={{
+                                                        width: `${Math.min(100, (closedFrames / alertMs) * 100)}%`,
+                                                        background: closedFrames > alertMs * 0.7
+                                                            ? 'linear-gradient(90deg, #ef4444, #dc2626)'
+                                                            : closedFrames > alertMs * 0.4
+                                                                ? 'linear-gradient(90deg, #f59e0b, #d97706)'
+                                                                : 'linear-gradient(90deg, #10b981, #059669)'
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="session-monitor-sublabel">Limit: {(alertMs / 1000).toFixed(1)}s</div>
+                                        </div>
+                                        <div className="session-monitor-item">
+                                            <div className="session-monitor-label">⚠️ Fatigue Time</div>
+                                            <div className={`session-monitor-value ${faceNotDetectedDuration > faintThreshold * 0.7 ? 'critical' : faceNotDetectedDuration > 0 ? 'warning' : 'normal'}`}>
+                                                {(faceNotDetectedDuration / 1000).toFixed(1)}s
+                                            </div>
+                                            <div className="session-monitor-bar">
+                                                <div
+                                                    className="session-monitor-fill"
+                                                    style={{
+                                                        width: `${Math.min(100, (faceNotDetectedDuration / faintThreshold) * 100)}%`,
+                                                        background: faceNotDetectedDuration > faintThreshold * 0.7
+                                                            ? 'linear-gradient(90deg, #ef4444, #dc2626)'
+                                                            : 'linear-gradient(90deg, #f59e0b, #d97706)'
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="session-monitor-sublabel">Faint limit: {(faintThreshold / 1000).toFixed(0)}s</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1044,6 +1085,251 @@ const DrowsinessDetector = ({ user, onLogout }) => {
                     <p>⚠️ This is a safety assistance tool. Stay alert while driving.</p>
                 </div>
             </div>
+
+            {/* Settings Panel */}
+            {showSettings && (
+                <div className="settings-panel">
+                    <h3 className="settings-title">Settings</h3>
+
+                    <div className="setting-item">
+                        <label className="setting-label">Camera Source</label>
+                        <div className="camera-source-buttons">
+                            <button
+                                onClick={() => setCameraSource('webcam')}
+                                className={`camera-btn ${cameraSource === 'webcam' ? 'active' : ''}`}
+                            >
+                                Webcam
+                            </button>
+                            <button
+                                onClick={() => setCameraSource('ip')}
+                                className={`camera-btn ${cameraSource === 'ip' ? 'active' : ''}`}
+                            >
+                                IP Camera
+                            </button>
+                        </div>
+                    </div>
+
+                    {cameraSource === 'ip' && (
+                        <div className="setting-item">
+                            <label className="setting-label">IP Camera URL</label>
+                            <input
+                                type="text"
+                                value={ipCameraUrl}
+                                onChange={(e) => setIpCameraUrl(e.target.value)}
+                                placeholder="http://192.168.1.100:8080/video"
+                                className="ip-input"
+                                disabled={isActive}
+                            />
+                            <div className="ip-examples">
+                                <p>Examples:</p>
+                                <ul>
+                                    <li>MJPEG: http://IP:PORT/video</li>
+                                    <li>IP Webcam (Android): http://IP:8080/video</li>
+                                    <li>DroidCam: http://IP:4747/video</li>
+                                </ul>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="setting-item">
+                        <label className="setting-label">Remote Model URL (optional)</label>
+                        <input
+                            type="text"
+                            value={remoteModelUrl}
+                            onChange={(e) => setRemoteModelUrl(e.target.value)}
+                            placeholder="https://example.com/model/model.json"
+                            className="ip-input"
+                            disabled={isActive}
+                        />
+                        <div style={{ marginTop: '8px' }}>
+                            <button
+                                onClick={async () => {
+                                    setIsLoading(true);
+                                    setModelWarning('');
+                                    await loadCNNModel();
+                                    setIsLoading(false);
+                                }}
+                                className="btn btn-primary"
+                                disabled={isLoading || isActive}
+                            >
+                                Load Model
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="setting-item">
+                        <label className="setting-label">
+                            Sensitivity Threshold: {threshold.toFixed(2)}
+                        </label>
+                        <input
+                            type="range"
+                            min="0.15"
+                            max="0.35"
+                            step="0.01"
+                            value={threshold}
+                            onChange={(e) => setThreshold(parseFloat(e.target.value))}
+                            className="slider"
+                        />
+                        <div className="slider-labels">
+                            <span>More Sensitive</span>
+                            <span>Less Sensitive</span>
+                        </div>
+                    </div>
+
+                    <div className="setting-item">
+                        <label className="setting-label">Low Light Mode</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <button
+                                onClick={() => setLowLightMode(!lowLightMode)}
+                                className={`camera-btn ${lowLightMode ? 'active' : ''}`}
+                            >
+                                {lowLightMode ? 'Enabled' : 'Disabled'}
+                            </button>
+                            <span style={{ color: '#888' }}>Enhances frames for darker scenes</span>
+                        </div>
+
+                        <div style={{ marginTop: '8px' }}>
+                            <label className="setting-label">Brightness</label>
+                            <input
+                                type="range"
+                                min="-0.3"
+                                max="0.4"
+                                step="0.01"
+                                value={brightness}
+                                onChange={(e) => setBrightness(parseFloat(e.target.value))}
+                                className="slider"
+                                disabled={isActive}
+                            />
+                            <label className="setting-label">Contrast</label>
+                            <input
+                                type="range"
+                                min="0.6"
+                                max="1.8"
+                                step="0.05"
+                                value={contrast}
+                                onChange={(e) => setContrast(parseFloat(e.target.value))}
+                                className="slider"
+                                disabled={isActive}
+                            />
+                            <label className="setting-label">Gamma</label>
+                            <input
+                                type="range"
+                                min="0.5"
+                                max="1.6"
+                                step="0.05"
+                                value={gamma}
+                                onChange={(e) => setGamma(parseFloat(e.target.value))}
+                                className="slider"
+                                disabled={isActive}
+                            />
+                        </div>
+                        <div className="setting-item">
+                            <label className="setting-label">Drowsiness Alert Delay: {(alertMs / 1000).toFixed(2)}s</label>
+                            <input
+                                type="range"
+                                min="500"
+                                max="3000"
+                                step="100"
+                                value={alertMs}
+                                onChange={(e) => setAlertMs(parseInt(e.target.value, 10))}
+                                className="slider"
+                                disabled={isActive}
+                            />
+                        </div>
+
+                        <div className="setting-item">
+                            <label className="setting-label">Faint Detection Timeout: {(faintThreshold / 1000).toFixed(0)}s</label>
+                            <input
+                                type="range"
+                                min="5000"
+                                max="60000"
+                                step="5000"
+                                value={faintThreshold}
+                                onChange={(e) => setFaintThreshold(parseInt(e.target.value, 10))}
+                                className="slider"
+                                disabled={isActive}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#888', fontSize: '11px', marginTop: '4px' }}>
+                                <span>Fast (5s)</span>
+                                <span>Slow (60s)</span>
+                            </div>
+                        </div>
+                        <div className="setting-item">
+                            <label className="setting-label">Auto-send Alerts</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button
+                                    onClick={() => setAutoSendAlerts(!autoSendAlerts)}
+                                    className={`camera-btn ${autoSendAlerts ? 'active' : ''}`}
+                                    disabled={isActive}
+                                >
+                                    {autoSendAlerts ? 'Enabled' : 'Disabled'}
+                                </button>
+                                <span style={{ color: '#888' }}>Automatically send SMS alerts when drowsiness detected</span>
+                            </div>
+                        </div>
+
+                        <div className="setting-item">
+                            <label className="setting-label">Emergency Contacts (comma or newline separated)</label>
+                            <textarea
+                                value={emergencyContacts}
+                                onChange={(e) => setEmergencyContacts(e.target.value)}
+                                placeholder="+15551234567, +15557654321"
+                                rows={3}
+                                className="ip-input"
+                                disabled={isActive}
+                            />
+                        </div>
+
+                        <div className="setting-item">
+                            <label className="setting-label">Police Contact Number</label>
+                            <input
+                                type="text"
+                                value={policeNumber}
+                                onChange={(e) => setPoliceNumber(e.target.value)}
+                                placeholder="100"
+                                className="ip-input"
+                                disabled={isActive}
+                            />
+                            <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
+                                <p><strong>India:</strong> Default is 100 (National Police Emergency)</p>
+                                <p>For SMS alerts to nearby police station, update with local police station number</p>
+                            </div>
+                        </div>
+
+                        <div className="setting-item">
+                            <button
+                                onClick={saveProfile}
+                                className="btn btn-save"
+                                disabled={isSaving || isActive}
+                            >
+                                {isSaving ? 'Saving...' : 'Save and Update Profile'}
+                            </button>
+                            <button
+                                onClick={() => sendAlert({ test: true })}
+                                className="btn btn-primary"
+                                style={{ marginTop: '10px' }}
+                                disabled={isActive}
+                            >
+                                Send Test Alert
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="info-box">
+                        <Info className="icon-small" />
+                        <div className="info-content">
+                            <p className="info-title">How it works:</p>
+                            <ul className="info-list">
+                                <li>Keep your face visible to the camera at all times</li>
+                                <li>Alert triggers if face not detected for more than {faintThreshold / 1000} seconds</li>
+                                <li>Indicates driver may have fainted or left vehicle</li>
+                                <li>Emergency contacts and nearby police notified automatically</li>
+                                <li>Live GPS location sent with every alert</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Drowsiness Detection System — Real-World Implementation Manual</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    :root {
+      --primary: #1a56db;
+      --primary-dark: #1e40af;
+      --accent: #f59e0b;
+      --danger: #ef4444;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --text: #1e293b;
+      --text-light: #64748b;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.7;
+      font-size: 13px;
+    }
+
+    /* ── COVER PAGE ── */
+    .cover {
+      width: 100%;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1a56db 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 60px 40px;
+      page-break-after: always;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cover::before {
+      content: '';
+      position: absolute;
+      width: 600px; height: 600px;
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 50%;
+      top: -200px; right: -200px;
+    }
+
+    .cover::after {
+      content: '';
+      position: absolute;
+      width: 400px; height: 400px;
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 50%;
+      bottom: -100px; left: -100px;
+    }
+
+    .cover-badge {
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(245, 158, 11, 0.5);
+      color: #f59e0b;
+      padding: 6px 18px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 30px;
+    }
+
+    .cover-icon {
+      font-size: 80px;
+      margin-bottom: 20px;
+    }
+
+    .cover h1 {
+      font-size: 42px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+
+    .cover h1 span {
+      color: #60a5fa;
+    }
+
+    .cover .subtitle {
+      font-size: 16px;
+      color: rgba(255,255,255,0.6);
+      max-width: 600px;
+      margin: 0 auto 40px;
+    }
+
+    .cover-divider {
+      width: 60px;
+      height: 3px;
+      background: #f59e0b;
+      border-radius: 2px;
+      margin: 0 auto 40px;
+    }
+
+    .cover-meta {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .cover-meta-item {
+      text-align: center;
+    }
+
+    .cover-meta-item .label {
+      font-size: 10px;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .cover-meta-item .value {
+      font-size: 14px;
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .cover-footer {
+      position: absolute;
+      bottom: 30px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
+    }
+
+    /* ── PAGE WRAPPER ── */
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 50px 40px;
+    }
+
+    /* ── SECTION HEADERS ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 50px 0 24px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .section-number {
+      background: var(--primary);
+      color: white;
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .section-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .section-emoji {
+      font-size: 22px;
+    }
+
+    h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--primary-dark);
+      margin: 28px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    p {
+      color: var(--text-light);
+      margin-bottom: 12px;
+    }
+
+    /* ── TABLES ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    thead {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    }
+
+    thead th {
+      color: white;
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f1f5f9;
+    }
+
+    tbody tr:hover {
+      background: #e0f2fe;
+    }
+
+    tbody td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    /* ── CODE BLOCKS ── */
+    pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      margin: 16px 0 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      line-height: 1.6;
+      border-left: 4px solid var(--primary);
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      background: #e2e8f0;
+      color: #1e293b;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    /* ── CARDS ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin: 16px 0 24px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .card-icon { font-size: 28px; margin-bottom: 10px; }
+    .card-title {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+    .card-desc {
+      font-size: 12px;
+      color: var(--text-light);
+      margin: 0;
+    }
+
+    /* ── ALERT BOXES ── */
+    .alert {
+      padding: 16px 20px;
+      border-radius: 10px;
+      margin: 16px 0;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .alert-warning {
+      background: #fffbeb;
+      border: 1px solid #fbbf24;
+      border-left: 4px solid #f59e0b;
+    }
+
+    .alert-danger {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      border-left: 4px solid #ef4444;
+    }
+
+    .alert-success {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      border-left: 4px solid #10b981;
+    }
+
+    .alert-info {
+      background: #eff6ff;
+      border: 1px solid #93c5fd;
+      border-left: 4px solid #3b82f6;
+    }
+
+    .alert-icon { font-size: 20px; flex-shrink: 0; }
+    .alert-content { font-size: 12px; color: var(--text); line-height: 1.6; }
+    .alert-content strong { color: var(--text); display: block; margin-bottom: 4px; }
+
+    /* ── FLOW DIAGRAM ── */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 20px 0;
+      gap: 0;
+    }
+
+    .flow-step {
+      background: white;
+      border: 2px solid var(--primary);
+      border-radius: 10px;
+      padding: 10px 24px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary);
+      text-align: center;
+      width: 280px;
+    }
+
+    .flow-arrow {
+      font-size: 20px;
+      color: var(--text-light);
+      margin: 2px 0;
+    }
+
+    /* ── PHASE BOXES ── */
+    .phase {
+      border-radius: 12px;
+      padding: 20px;
+      margin: 12px 0;
+      border-left: 4px solid;
+    }
+
+    .phase-1 { background: #eff6ff; border-color: #3b82f6; }
+    .phase-2 { background: #f0fdf4; border-color: #10b981; }
+    .phase-3 { background: #fdf4ff; border-color: #a855f7; }
+
+    .phase-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .phase-1 .phase-label { color: #3b82f6; }
+    .phase-2 .phase-label { color: #10b981; }
+    .phase-3 .phase-label { color: #a855f7; }
+
+    .phase-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .phase-desc {
+      font-size: 12px;
+      color: var(--text-light);
+      margin: 0;
+    }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
+    .badge-yellow { background: #fef9c3; color: #854d0e; }
+    .badge-blue { background: #dbeafe; color: #1e40af; }
+
+    /* ── LIST STYLES ── */
+    ul, ol {
+      padding-left: 22px;
+      margin: 10px 0 16px;
+    }
+
+    li {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-bottom: 6px;
+      line-height: 1.6;
+    }
+
+    li strong { color: var(--text); }
+
+    /* ── TOC ── */
+    .toc {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 30px;
+      margin: 30px 0;
+    }
+
+    .toc h2 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .toc-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px dashed var(--border);
+      font-size: 13px;
+    }
+
+    .toc-item:last-child { border-bottom: none; }
+
+    .toc-num {
+      color: var(--primary);
+      font-weight: 700;
+      width: 24px;
+    }
+
+    .toc-title { flex: 1; padding-left: 10px; color: var(--text); }
+    .toc-page { color: var(--text-light); font-size: 11px; }
+
+    /* ── SUMMARY BOX ── */
+    .summary-box {
+      background: linear-gradient(135deg, #1a56db, #1e40af);
+      color: white;
+      border-radius: 14px;
+      padding: 28px;
+      margin: 24px 0;
+    }
+
+    .summary-box h3 {
+      color: white;
+      font-size: 16px;
+      margin: 0 0 16px;
+    }
+
+    .summary-box p {
+      color: rgba(255,255,255,0.8);
+      font-size: 12px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .summary-item {
+      background: rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .summary-item .big { font-size: 28px; font-weight: 800; color: #fbbf24; }
+    .summary-item .small { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+
+    /* ── PRINT ── */
+    @media print {
+      body { background: white; }
+      .cover { min-height: 100vh; }
+      .page { padding: 30px; }
+      pre { page-break-inside: avoid; }
+      table { page-break-inside: avoid; }
+      .section-header { page-break-after: avoid; }
+    }
+
+    .print-btn {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 14px 24px;
+      border-radius: 999px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(26, 86, 219, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+      z-index: 999;
+    }
+
+    .print-btn:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(26, 86, 219, 0.5);
+    }
+
+    @media print {
+      .print-btn { display: none; }
+    }
+
+    hr.section-break {
+      border: none;
+      border-top: 1px dashed var(--border);
+      margin: 30px 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════ COVER PAGE ════════════════════════════ -->
+<div class="cover">
+  <div class="cover-badge">College Project Documentation</div>
+  <div class="cover-icon">👁️</div>
+  <h1>Drowsiness Detection<br/><span>Real-World Implementation</span></h1>
+  <div class="cover-divider"></div>
+  <p class="subtitle">
+    A comprehensive guide to deploying AI-based driver drowsiness detection
+    in real vehicles using embedded systems, OBD-II integration, and cloud connectivity.
+  </p>
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <div class="label">Project Type</div>
+      <div class="value">AI + IoT + Automotive</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Technology</div>
+      <div class="value">MediaPipe + React + Node.js</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Hardware</div>
+      <div class="value">Embedded Systems / OBD-II</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Year</div>
+      <div class="value">2026</div>
+    </div>
+  </div>
+  <div class="cover-footer">Drowsiness Detection System — Real-World Implementation Manual © 2026</div>
+</div>
+
+<!-- ════════════════════════════ CONTENT ════════════════════════════ -->
+<div class="page">
+
+  <!-- TABLE OF CONTENTS -->
+  <div class="toc">
+    <h2>📋 Table of Contents</h2>
+    <div class="toc-item"><span class="toc-num">1</span><span class="toc-title">Introduction & Overview</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-num">2</span><span class="toc-title">Hardware Requirements & Setup</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-num">3</span><span class="toc-title">Alternative Processing Boards</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-num">4</span><span class="toc-title">System Architecture</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-num">5</span><span class="toc-title">Auto-Start on Boot</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-num">6</span><span class="toc-title">Connecting PC to Vehicle (OBD-II & CAN Bus)</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-num">7</span><span class="toc-title">Alert Escalation System</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-num">8</span><span class="toc-title">Cost Breakdown (Chennai Market)</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-num">9</span><span class="toc-title">Recommended Implementation Phases</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-num">10</span><span class="toc-title">Industry Standards & Safety</span><span class="toc-page"></span></div>
+    <div class="toc-item"><span class="toc-num">11</span><span class="toc-title">Conclusion & Next Steps</span><span class="toc-page"></span></div>
+  </div>
+
+  <!-- ══════════════════ SECTION 1 ══════════════════ -->
+  <div class="section-header">
+    <div class="section-number">1</div>
+    <span class="section-emoji">📖</span>
+    <h2 class="section-title">Introduction & Overview</h2>
+  </div>
+
+  <p>
+    Driver drowsiness is one of the leading causes of road accidents worldwide. According to the National Highway Traffic Safety Administration (NHTSA), drowsy driving causes over 100,000 crashes annually. This manual describes how to take a <strong>web-based AI drowsiness detection system</strong> and deploy it into a real-world automotive environment.
+  </p>
+
+  <div class="summary-box">
+    <h3>🎯 Project Summary</h3>
+    <p>This system uses MediaPipe face landmark detection to calculate the Eye Aspect Ratio (EAR) and determine if a driver is falling asleep. When detected, it triggers alerts, notifies emergency contacts, and can interface with the vehicle's control systems.</p>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="big">EAR</div>
+        <div class="small">Eye Aspect Ratio<br/>Detection Method</div>
+      </div>
+      <div class="summary-item">
+        <div class="big">3</div>
+        <div class="small">Alert Escalation<br/>Levels</div>
+      </div>
+      <div class="summary-item">
+        <div class="big">SOS</div>
+        <div class="small">Emergency Contact<br/>Notification</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>🔍 How EAR Works</h3>
+  <p>
+    The Eye Aspect Ratio (EAR) is a numerical value calculated from the positions of 6 key eye landmarks detected by MediaPipe. When a person's eyes are open, EAR is approximately 0.25–0.30. When eyes close (sleep or blink), EAR drops significantly.
+  </p>
+  <pre>
+        P2    P3
+         \    /
+    P1 ——+——+—— P4
+         /    \
+        P6    P5
+
+EAR = (|P2-P6| + |P3-P5|) / (2 × |P1-P4|)
+
+Threshold: EAR &lt; 0.25 for &gt; 2 seconds → Drowsiness Alert!</pre>
+
+  <!-- ══════════════════ SECTION 2 ══════════════════ -->
+  <div class="section-header">
+    <div class="section-number">2</div>
+    <span class="section-emoji">🔧</span>
+    <h2 class="section-title">Hardware Requirements & Setup</h2>
+  </div>
+
+  <h3>📦 Option A — Budget Build (Smartphone-Based)</h3>
+  <table>
+    <thead><tr><th>Component</th><th>Purpose</th><th>Price (INR)</th></tr></thead>
+    <tbody>
+      <tr><td>Old Android Phone</td><td>Camera + Processing</td><td>₹3,000 – ₹6,000</td></tr>
+      <tr><td>Dashboard Mount</td><td>Hold phone in position</td><td>₹300 – ₹500</td></tr>
+      <tr><td>Bluetooth Speaker</td><td>Alert sound output</td><td>₹500 – ₹1,500</td></tr>
+      <tr><td>Mobile Data (JIO/Airtel)</td><td>SOS connectivity</td><td>₹299/month</td></tr>
+      <tr><td><strong>Total</strong></td><td></td><td><strong>₹4,100 – ₹8,500</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h3>🖥️ Option B — Mid-Range Build (Raspberry Pi / Orange Pi)</h3>
+  <table>
+    <thead><tr><th>Component</th><th>Purpose</th><th>Price (INR)</th></tr></thead>
+    <tbody>
+      <tr><td>Raspberry Pi 5 (4GB) / Orange Pi 5</td><td>Main processing unit</td><td>₹6,000 – ₹10,000</td></tr>
+      <tr><td>IR Camera Module</td><td>Night vision eye tracking</td><td>₹1,500 – ₹2,500</td></tr>
+      <tr><td>32GB SD Card (Class 10)</td><td>OS + application storage</td><td>₹400 – ₹700</td></tr>
+      <tr><td>12V to 5V Car Power Converter</td><td>Power from car battery</td><td>₹500 – ₹800</td></tr>
+      <tr><td>GSM/4G Module (SIM800L)</td><td>SMS alerts</td><td>₹400 – ₹800</td></tr>
+      <tr><td>5" LCD Display</td><td>Status display</td><td>₹800 – ₹1,500</td></tr>
+      <tr><td>GPS Module (NEO-6M)</td><td>Location tracking</td><td>₹400 – ₹800</td></tr>
+      <tr><td>Enclosure / Case</td><td>Hardware protection</td><td>₹500 – ₹1,500</td></tr>
+      <tr><td><strong>Total</strong></td><td></td><td><strong>₹10,500 – ₹18,600</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h3>🚀 Option C — Professional Build (NVIDIA Jetson)</h3>
+  <table>
+    <thead><tr><th>Component</th><th>Purpose</th><th>Price (INR)</th></tr></thead>
+    <tbody>
+      <tr><td>NVIDIA Jetson Nano 4GB</td><td>AI-accelerated processing</td><td>₹18,000 – ₹22,000</td></tr>
+      <tr><td>IR Night Vision Camera</td><td>Low-light eye detection</td><td>₹2,000 – ₹4,000</td></tr>
+      <tr><td>Witty Pi (Power HAT)</td><td>Controlled startup/shutdown</td><td>₹2,500 – ₹4,000</td></tr>
+      <tr><td>4G LTE Module (Quectel EC25)</td><td>Remote monitoring</td><td>₹2,000 – ₹3,500</td></tr>
+      <tr><td>OBD-II Adapter (ELM327)</td><td>Car data + control</td><td>₹500 – ₹1,500</td></tr>
+      <tr><td>7" Touchscreen</td><td>Driver interface</td><td>₹3,000 – ₹5,000</td></tr>
+      <tr><td><strong>Total</strong></td><td></td><td><strong>₹28,000 – ₹40,000</strong></td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert-info">
+    <span class="alert-icon">💡</span>
+    <div class="alert-content">
+      <strong>Why use an IR Camera?</strong>
+      Standard cameras fail in darkness. Infrared (IR) cameras work in complete darkness and are essential for a 24/7 driver monitoring system that works during night driving.
+    </div>
+  </div>
+
+  <!-- ══════════════════ SECTION 3 ══════════════════ -->
+  <div class="section-header">
+    <div class="section-number">3</div>
+    <span class="section-emoji">🔄</span>
+    <h2 class="section-title">Alternative Processing Boards</h2>
+  </div>
+
+  <p>If Raspberry Pi 5 is unavailable or over budget, these alternatives work equally well:</p>
+
+  <table>
+    <thead>
+      <tr><th>Board</th><th>Price (INR)</th><th>CPU/GPU</th><th>AI Capability</th><th>Best For</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Orange Pi 5</strong></td><td>₹5,500 – ₹7,000</td><td>RK3588S 8-core</td><td>⭐⭐⭐⭐</td><td>Best budget alternative</td></tr>
+      <tr><td><strong>Banana Pi M5</strong></td><td>₹4,000 – ₹6,000</td><td>S905X3 4-core</td><td>⭐⭐⭐</td><td>Ultra-budget build</td></tr>
+      <tr><td><strong>Khadas VIM3</strong></td><td>₹7,000 – ₹10,000</td><td>A311D + 5TOPS NPU</td><td>⭐⭐⭐⭐</td><td>Built-in AI chip</td></tr>
+      <tr><td><strong>NVIDIA Jetson Nano</strong></td><td>₹18,000 – ₹22,000</td><td>A57 + 128 CUDA cores</td><td>⭐⭐⭐⭐⭐</td><td>Best AI performance</td></tr>
+      <tr><td><strong>Old Laptop (i3/i5)</strong></td><td>₹5,000 – ₹15,000</td><td>Intel x86</td><td>⭐⭐⭐⭐⭐</td><td>Easiest setup</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert-success">
+    <span class="alert-icon">🏆</span>
+    <div class="alert-content">
+      <strong>Recommended for this project:</strong>
+      Orange Pi 5 (~₹6,000) — Best balance of price, performance, and availability. Runs Ubuntu, supports Node.js + Python out of the box.
+    </div>
+  </div>
+
+  <!-- ══════════════════ SECTION 4 ══════════════════ -->
+  <div class="section-header">
+    <div class="section-number">4</div>
+    <span class="section-emoji">🏗️</span>
+    <h2 class="section-title">System Architecture</h2>
+  </div>
+
+  <h3>📡 Overall System Flow</h3>
+  <div class="flow">
+    <div class="flow-step">🔑 Car Ignition ON</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">⚡ Power to Processing Board</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">📷 IR Camera Activates</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">🧠 AI Model Loads (MediaPipe)</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">👁️ Real-Time EAR Calculation</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">😴 Drowsiness Detected?</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">🚨 Alert Escalation System</div>
+  </div>
+
+  <h3>🌐 Cloud Connectivity Architecture</h3>
+  <pre>
+  [IR Camera in Car]
+        |
+  [Processing Board] ──── Local Alert (Buzzer/Vibration)
+        |
+     [4G LTE]
+        |
+  [Your Node.js Backend] ──── SQLite Database
+        |           |
+   [SMS Alert]   [Dashboard]
+        |
+  [Emergency Contacts / Police]</pre>
+
+  <!-- ══════════════════ SECTION 5 ══════════════════ -->
+  <div class="section-header">
+    <div class="section-number">5</div>
+    <span class="section-emoji">🔄</span>
+    <h2 class="section-title">Auto-Start on Boot</h2>
+  </div>
+
+  <p>The application must start automatically when the car's device powers on — without any manual interaction from the driver.</p>
+
+  <h3>Method 1: PM2 Process Manager (Recommended for Node.js)</h3>
+  <pre>
+# Install PM2 globally
+npm install -g pm2
+
+# Navigate to your project directory
+cd /home/pi/drowsiness-app
+
+# Start your app with PM2
+pm2 start npm --name "drowsiness-app" -- start
+
+# Save the current process list
+pm2 save
+
+# Generate auto-startup script
+pm2 startup
+# → Copy and run the command it outputs
+
+# Verify it's running
+pm2 list</pre>
+
+  <h3>Method 2: systemd Service (Linux)</h3>
+  <p>Create the file <code>/etc/systemd/system/drowsiness.service</code>:</p>
+  <pre>
+[Unit]
+Description=Drowsiness Detection App
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/drowsiness-app
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target</pre>
+
+  <pre>
+# Enable and start the service
+sudo systemctl daemon-reload
+sudo systemctl enable drowsiness.service
+sudo systemctl start drowsiness.service
+sudo systemctl status drowsiness.service</pre>
+
+  <h3>Method 3: Windows Task Scheduler (For Windows devices)</h3>
+  <p>Create a <code>start-drowsiness.bat</code> file:</p>
+  <pre>
+@echo off
+cd /d D:\projects\123
+start npm run dev</pre>
+  <p>Place a shortcut to this file in:</p>
+  <pre>C:\Users\YourName\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup</pre>
+
+  <div class="alert alert-warning">
+    <span class="alert-icon">⚠️</span>
+    <div class="alert-content">
+      <strong>Power Management:</strong>
+      Use a Witty Pi HAT or UPS module to safely shut down the board when the car engine turns off. Sudden power cuts can corrupt the SD card and prevent the system from booting next time.
+    </div>
+  </div>
+
+  <!-- ══════════════════ SECTION 6 ══════════════════ -->
+  <div class="section-header">
+    <div class="section-number">6</div>
+    <span class="section-emoji">🔌</span>
+    <h2 class="section-title">Connecting PC/Board to Vehicle</h2>
+  </div>
+
+  <h3>🔌 Method 1: OBD-II Port (Safest — Start Here)</h3>
+  <p>Every car manufactured after 2000 has an OBD-II (On-Board Diagnostics) port, usually located under the steering column. This is the simplest and safest way to read car data.</p>
+
+  <table>
+    <thead><tr><th>Data You Can Read</th><th>Data You Can Write/Control</th></tr></thead>
+    <tbody>
+      <tr><td>✅ Engine RPM</td><td>⚠️ Speed limiter signals</td></tr>
+      <tr><td>✅ Vehicle speed</td><td>⚠️ Engine state</td></tr>
+      <tr><td>✅ Fuel level</td><td>⚠️ Gear shift signals</td></tr>
+      <tr><td>✅ Engine temperature</td><td>🔴 Brakes (requires CAN)</td></tr>
+      <tr><td>✅ Fault codes</td><td>🔴 Steering (requires CAN)</td></tr>
+    </tbody>
+  </table>
+
+  <pre>
+# Install python-OBD library
+pip install obd
+
+# Python code to read car data
+import obd
+
+connection = obd.OBD()  # auto-connects to ELM327
+
+# Read vehicle speed
+speed_cmd = obd.commands.SPEED
+response = connection.query(speed_cmd)
+print(f"Speed: {response.value}")
+
+# Read engine RPM
+rpm_cmd = obd.commands.RPM
+response = connection.query(rpm_cmd)
+print(f"RPM: {response.value}")</pre>
+
+  <h3>🚌 Method 2: CAN Bus Interface (Advanced Control)</h3>
+  <p>CAN (Controller Area Network) Bus is the internal communication network of modern vehicles. All sensors, ECUs, and control systems communicate through this bus.</p>
+
+  <pre>
+# Install python-can library
+pip install python-can
+
+import can
+
+# Connect to CAN Bus via USB interface
+bus = can.interface.Bus(channel='can0', bustype='socketcan')
+
+# Listen for messages from the car
+for msg in bus:
+    print(f"CAN ID: {msg.arbitration_id:#x}, Data: {msg.data.hex()}")
+
+# Send a control command (example: horn)
+msg = can.Message(arbitration_id=0x123, data=[0x01, 0x00, 0x00, 0x00])
+bus.send(msg)</pre>
+
+  <h3>⚡ Method 3: Relay Module (Direct Hardware Control)</h3>
+  <p>The simplest method — use GPIO pins on your board to control physical relays connected to car components:</p>
+
+  <pre>
+# For Raspberry Pi GPIO
+import RPi.GPIO as GPIO
+import time
+
+# Setup
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(17, GPIO.OUT)  # Pin 17 connected to buzzer relay
+GPIO.setup(18, GPIO.OUT)  # Pin 18 connected to seat vibration relay
+
+def trigger_alert(level):
+    if level == 1:
+        GPIO.output(17, GPIO.HIGH)  # Activate buzzer
+        time.sleep(2)
+        GPIO.output(17, GPIO.LOW)
+    elif level == 2:
+        GPIO.output(18, GPIO.HIGH)  # Activate seat vibration
+        time.sleep(5)
+        GPIO.output(18, GPIO.LOW)</pre>
+
+  <!-- ══════════════════ SECTION 7 ══════════════════ -->
+  <div class="section-header">
+    <div class="section-number">7</div>
+    <span class="section-emoji">🚨</span>
+    <h2 class="section-title">Alert Escalation System</h2>
+  </div>
+
+  <p>A proper drowsiness alert system should escalate gradually — not immediately triggering emergency responses for a short blink:</p>
+
+  <table>
+    <thead><tr><th>Level</th><th>Trigger Condition</th><th>Actions Taken</th><th>Risk</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="badge badge-yellow">Level 1</span><br/>Mild</td>
+        <td>EAR &lt; 0.25 for 1–2 seconds</td>
+        <td>Visual warning on screen + soft beep</td>
+        <td>Low</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-yellow">Level 2</span><br/>Moderate</td>
+        <td>EAR &lt; 0.25 for 2–5 seconds</td>
+        <td>Loud alarm + seat vibration + voice message</td>
+        <td>Medium</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-red">Level 3</span><br/>Critical</td>
+        <td>No response after Level 2, 5+ seconds</td>
+        <td>SMS to emergency contacts + GPS location + reduce engine throttle</td>
+        <td>High</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>📱 Integration with Your Existing Code</h3>
+  <pre>
+// In DrowsinessDetector.jsx — extend existing alert logic
+const triggerAlert = async (level) => {
+  switch(level) {
+    case 1:
+      playAlertSound();           // ✅ Already implemented
+      break;
+
+    case 2:
+      playAlertSound();
+      await fetch('/api/trigger-hardware', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'vibrate_seat' })
+      });
+      break;
+
+    case 3:
+      sendSOSAlert();             // ✅ Already implemented
+      await fetch('/api/trigger-hardware', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'reduce_speed' })
+      });
+      break;
+  }
+};</pre>
+
+  <!-- ══════════════════ SECTION 8 ══════════════════ -->
+  <div class="section-header">
+    <div class="section-number">8</div>
+    <span class="section-emoji">💰</span>
+    <h2 class="section-title">Cost Breakdown — Chennai Market</h2>
+  </div>
+
+  <h3>🛒 Where to Buy in Chennai</h3>
+  <table>
+    <thead><tr><th>Store</th><th>Location</th><th>Best For</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Richie Street</strong></td><td>Mint, North Chennai</td><td>All electronics, modules, ICs, wires</td></tr>
+      <tr><td><strong>Evelta.com</strong></td><td>Online (ships Chennai)</td><td>Raspberry Pi, Jetson Nano, cameras</td></tr>
+      <tr><td><strong>Robu.in</strong></td><td>Online</td><td>Sensors, GSM modules, displays</td></tr>
+      <tr><td><strong>Amazon India</strong></td><td>Online (2-day delivery)</td><td>Everything — best prices</td></tr>
+      <tr><td><strong>OLX Chennai</strong></td><td>Online + local pickup</td><td>Second-hand laptops, phones</td></tr>
+      <tr><td><strong>SP Road / Kondithope</strong></td><td>Central Chennai</td><td>Wires, connectors, power supplies</td></tr>
+    </tbody>
+  </table>
+
+  <h3>📊 Total Cost Summary</h3>
+  <table>
+    <thead><tr><th>Build Type</th><th>Hardware Cost</th><th>Monthly Running</th><th>Best For</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>📱 <strong>Budget (Smartphone)</strong></td>
+        <td>₹4,000 – ₹8,500</td>
+        <td>₹299</td>
+        <td>Demo / College Project</td>
+      </tr>
+      <tr>
+        <td>🖥️ <strong>Mid-Range (Orange Pi)</strong></td>
+        <td>₹12,000 – ₹18,000</td>
+        <td>₹500 – ₹1,000</td>
+        <td>Working Car Prototype</td>
+      </tr>
+      <tr>
+        <td>🚀 <strong>Professional (Jetson)</strong></td>
+        <td>₹30,000 – ₹50,000</td>
+        <td>₹1,000 – ₹3,000</td>
+        <td>Production Vehicle</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ══════════════════ SECTION 9 ══════════════════ -->
+  <div class="section-header">
+    <div class="section-number">9</div>
+    <span class="section-emoji">📅</span>
+    <h2 class="section-title">Recommended Implementation Phases</h2>
+  </div>
+
+  <div class="phase phase-1">
+    <div class="phase-label">Phase 1 — Immediate (Week 1)</div>
+    <div class="phase-title">🖥️ PC/Laptop in the Car</div>
+    <p class="phase-desc">
+      Mount your existing laptop in the car. Run the web app from the browser. Connect a USB webcam to the dashboard. The software runs as-is — no changes needed. This is the fastest way to demonstrate the project working in a real vehicle.
+      <br/><br/>
+      <strong>Cost: ₹0 (use existing laptop) + ₹500 USB webcam mount</strong>
+    </p>
+  </div>
+
+  <div class="phase phase-2">
+    <div class="phase-label">Phase 2 — Short Term (Month 1–2)</div>
+    <div class="phase-title">🔌 OBD-II + SMS Integration</div>
+    <p class="phase-desc">
+      Add an ELM327 OBD-II adapter (₹800) to read real car speed. When drowsiness is detected AND car is moving, trigger SMS via Twilio/MSG91. Add GPS tracking so emergency contacts receive the exact location. This makes the system fully functional for real-world use.
+      <br/><br/>
+      <strong>Cost: ₹800 OBD adapter + ₹500/month SMS service</strong>
+    </p>
+  </div>
+
+  <div class="phase phase-3">
+    <div class="phase-label">Phase 3 — Long Term (Month 3–6)</div>
+    <div class="phase-title">🚀 Embedded System + Vehicle Control</div>
+    <p class="phase-desc">
+      Replace laptop with Orange Pi 5 / Jetson Nano. Add relay module for buzzer and seat vibration. Implement CAN Bus interface for active speed reduction. Deploy to a dedicated enclosure mounted permanently in the vehicle dashboard.
+      <br/><br/>
+      <strong>Cost: ₹15,000 – ₹25,000 total hardware investment</strong>
+    </p>
+  </div>
+
+  <!-- ══════════════════ SECTION 10 ══════════════════ -->
+  <div class="section-header">
+    <div class="section-number">10</div>
+    <span class="section-emoji">📏</span>
+    <h2 class="section-title">Industry Standards & Safety</h2>
+  </div>
+
+  <table>
+    <thead><tr><th>Standard</th><th>Description</th><th>Relevance</th></tr></thead>
+    <tbody>
+      <tr><td><strong>ISO 17387</strong></td><td>Lane change warning systems</td><td>Lane departure when drowsy</td></tr>
+      <tr><td><strong>SAE J3016</strong></td><td>Autonomous driving levels (L0–L5)</td><td>Our system = Level 1 assist</td></tr>
+      <tr><td><strong>NHTSA DMS</strong></td><td>Driver Monitoring System guidelines</td><td>Camera placement and accuracy standards</td></tr>
+      <tr><td><strong>Euro NCAP 2026</strong></td><td>Mandates DMS for 5-star safety rating</td><td>Our system qualifies as basic DMS</td></tr>
+      <tr><td><strong>IS 15776</strong></td><td>Indian standard for automotive electronics</td><td>Compliance for Indian market deployment</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert alert-danger">
+    <span class="alert-icon">⚠️</span>
+    <div class="alert-content">
+      <strong>Critical Safety Warning:</strong>
+      Any modification to a vehicle's braking, steering, or engine control systems should ONLY be done by a certified automotive engineer. Improper wiring or software bugs in safety-critical systems can cause accidents. Always test in a controlled, stationary environment first.
+    </div>
+  </div>
+
+  <h3>✅ Safe vs Unsafe Operations</h3>
+  <table>
+    <thead><tr><th>Operation</th><th>Safety Level</th><th>Can You Do It?</th></tr></thead>
+    <tbody>
+      <tr><td>Reading OBD data (speed, RPM)</td><td><span class="badge badge-green">Safe</span></td><td>✅ Yes, freely</td></tr>
+      <tr><td>Playing alert sounds</td><td><span class="badge badge-green">Safe</span></td><td>✅ Yes, freely</td></tr>
+      <tr><td>Triggering horn/lights via relay</td><td><span class="badge badge-yellow">Moderate</span></td><td>⚠️ Test carefully</td></tr>
+      <tr><td>Seat vibration motor</td><td><span class="badge badge-green">Safe</span></td><td>✅ Yes</td></tr>
+      <tr><td>Engine speed reduction via OBD</td><td><span class="badge badge-yellow">Moderate</span></td><td>⚠️ Consult expert</td></tr>
+      <tr><td>Brake control via CAN Bus</td><td><span class="badge badge-red">Dangerous</span></td><td>🔴 Professional only</td></tr>
+      <tr><td>Steering control</td><td><span class="badge badge-red">Dangerous</span></td><td>🔴 Professional only</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ══════════════════ SECTION 11 ══════════════════ -->
+  <div class="section-header">
+    <div class="section-number">11</div>
+    <span class="section-emoji">🎯</span>
+    <h2 class="section-title">Conclusion & Next Steps</h2>
+  </div>
+
+  <p>
+    The drowsiness detection system developed in this project is a <strong>production-ready software solution</strong>. The AI detection logic using MediaPipe, the SOS alert system, emergency contact management, and real-time monitoring are all fully functional.
+  </p>
+
+  <p>
+    The path to real-world deployment in vehicles is clear and achievable. Starting with a simple OBD-II connection and progressively adding hardware components, this system can evolve from a college prototype to a genuine driver safety product.
+  </p>
+
+  <div class="summary-box">
+    <h3>🏆 Key Achievements of This Project</h3>
+    <ul style="color: rgba(255,255,255,0.85); padding-left: 20px;">
+      <li>Real-time eye tracking using MediaPipe facial landmarks</li>
+      <li>EAR-based drowsiness detection with configurable threshold</li>
+      <li>Three-level alert escalation system</li>
+      <li>Emergency contact SOS notification system</li>
+      <li>User authentication and profile management</li>
+      <li>Vehicle simulation with Indian road conditions</li>
+      <li>Full-stack web application (React + Node.js + SQLite)</li>
+      <li>Cloud-ready deployment on Vercel</li>
+    </ul>
+  </div>
+
+  <h3>📚 Recommended Resources</h3>
+  <ul>
+    <li><strong>MediaPipe Documentation:</strong> developers.google.com/mediapipe</li>
+    <li><strong>python-OBD Library:</strong> python-obd.readthedocs.io</li>
+    <li><strong>NVIDIA Jetson Projects:</strong> developer.nvidia.com/embedded</li>
+    <li><strong>Raspberry Pi Documentation:</strong> raspberrypi.com/documentation</li>
+    <li><strong>CAN Bus Tutorial:</strong> python-can.readthedocs.io</li>
+  </ul>
+
+  <hr class="section-break"/>
+
+  <p style="text-align: center; color: var(--text-light); font-size: 11px; margin-top: 30px;">
+    Drowsiness Detection System — Real-World Implementation Manual<br/>
+    Prepared for College Project Documentation • 2026<br/>
+    Technology Stack: React.js • Node.js • SQLite • MediaPipe • TensorFlow.js
+  </p>
+
+</div>
+
+<!-- PRINT BUTTON -->
+<button class="print-btn" onclick="window.print()">
+  🖨️ Save as PDF
+</button>
+
+</body>
+</html>
